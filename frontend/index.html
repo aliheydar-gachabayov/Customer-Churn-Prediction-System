@@ -1,0 +1,313 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Churn Predictor</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #0f172a;
+    color: #f8fafc;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 24px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+h1 {
+    font-size: clamp(28px, 5vw, 42px);
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    color: #94a3b8;
+}
+
+.card {
+    background: #1e293b;
+    padding: 30px;
+    border-radius: 18px;
+    border: 1px solid #334155;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+input, select {
+    width: 100%;
+    padding: 13px;
+    background: #0f172a;
+    color: white;
+    border: 1px solid #475569;
+    border-radius: 9px;
+    font-size: 15px;
+}
+
+input:focus, select:focus {
+    outline: 2px solid #38bdf8;
+}
+
+button {
+    width: 100%;
+    margin-top: 25px;
+    padding: 15px;
+    background: #38bdf8;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #082f49;
+}
+
+button:hover {
+    background: #7dd3fc;
+}
+
+button:disabled {
+    opacity: .6;
+    cursor: wait;
+}
+
+.result {
+    display: none;
+    margin-top: 28px;
+    padding: 24px;
+    border-radius: 12px;
+    background: #0f172a;
+    text-align: center;
+}
+
+.probability {
+    font-size: 46px;
+    font-weight: 800;
+    margin: 12px 0;
+}
+
+.progress {
+    height: 12px;
+    background: #334155;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #38bdf8;
+    transition: width .4s ease;
+}
+
+.message {
+    margin-top: 15px;
+    color: #cbd5e1;
+}
+
+.note {
+    color: #94a3b8;
+    font-size: 12px;
+    margin-top: 14px;
+}
+
+.error {
+    color: #fca5a5;
+    margin-top: 14px;
+    text-align: center;
+}
+
+@media (max-width: 600px) {
+    .container {
+        margin: 20px auto;
+        padding: 16px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card {
+        padding: 20px;
+    }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<header>
+    <h1>Customer Churn Predictor</h1>
+    <p class="subtitle">
+        Machine Learning Powered Customer Risk Analysis
+    </p>
+</header>
+
+<div class="card">
+
+<form id="predictionForm">
+
+<div class="form-grid">
+
+<div>
+    <label for="tenure">Customer Tenure (Months)</label>
+    <input
+        type="number"
+        id="tenure"
+        min="0"
+        max="72"
+        value="12"
+        required
+    >
+</div>
+
+<div>
+    <label for="charges">Monthly Charges ($)</label>
+    <input
+        type="number"
+        id="charges"
+        min="0"
+        step="0.01"
+        value="75"
+        required
+    >
+</div>
+
+<div>
+    <label for="contract">Contract Type</label>
+    <select id="contract">
+        <option value="Month-to-month">Month-to-month</option>
+        <option value="One year">One year</option>
+        <option value="Two year">Two year</option>
+    </select>
+</div>
+
+<div>
+    <label for="internet">Internet Service</label>
+    <select id="internet">
+        <option value="Fiber optic">Fiber optic</option>
+        <option value="DSL">DSL</option>
+        <option value="No">No internet</option>
+    </select>
+</div>
+
+</div>
+
+<button type="submit" id="submitBtn">
+    Predict Churn Risk
+</button>
+
+</form>
+
+<p id="error" class="error" role="alert"></p>
+
+<div id="result" class="result" aria-live="polite">
+    <h2>Prediction Result</h2>
+    <div id="probability" class="probability"></div>
+
+    <div class="progress">
+        <div id="progressFill" class="progress-fill"></div>
+    </div>
+
+    <p id="riskLevel"></p>
+    <p id="message" class="message"></p>
+
+    <p class="note">
+        This is an educational ML prediction,
+        not a validated business decision tool.
+    </p>
+</div>
+
+</div>
+</div>
+
+<script>
+const form = document.getElementById("predictionForm");
+const button = document.getElementById("submitBtn");
+
+form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const result = document.getElementById("result");
+    const error = document.getElementById("error");
+
+    result.style.display = "none";
+    error.textContent = "";
+    button.disabled = true;
+    button.textContent = "Predicting...";
+
+    const customer = {
+        tenure: Number(document.getElementById("tenure").value),
+        MonthlyCharges: Number(document.getElementById("charges").value),
+        Contract: document.getElementById("contract").value,
+        InternetService: document.getElementById("internet").value
+    };
+
+    try {
+        const response = await fetch("/predict", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(customer)
+        });
+
+        if (!response.ok) {
+            throw new Error("Prediction request failed");
+        }
+
+        const data = await response.json();
+        const percentage = data.churn_probability * 100;
+
+        document.getElementById("probability").textContent =
+            percentage.toFixed(1) + "%";
+
+        document.getElementById("progressFill").style.width =
+            percentage + "%";
+
+        document.getElementById("riskLevel").textContent =
+            data.risk_level + " Churn Risk";
+
+        document.getElementById("message").textContent =
+            data.prediction === 1
+                ? "The model predicts this customer may churn."
+                : "The model predicts this customer is less likely to churn.";
+
+        result.style.display = "block";
+
+    } catch (err) {
+        error.textContent =
+            "Unable to generate a prediction. Check that the API is running.";
+        console.error(err);
+    } finally {
+        button.disabled = false;
+        button.textContent = "Predict Churn Risk";
+    }
+});
+</script>
+</body>
+</html>
