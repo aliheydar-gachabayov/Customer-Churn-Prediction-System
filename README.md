@@ -331,6 +331,52 @@ Example response (illustrative values):
 
 Invalid input returns HTTP 422 with validation details.
 
+## Model evaluation and explainability
+
+Install the development dependencies (including Matplotlib and SHAP):
+
+```bash
+python -m pip install -r requirements-dev.txt
+```
+
+### Evaluate the saved model
+
+Run:
+
+```bash
+python evaluate_model.py
+```
+
+The script recreates the original stratified 80/20 split with `random_state=42`, loads the saved model and decision threshold, and evaluates only the held-out test partition. It reports:
+
+- ROC-AUC and average precision.
+- Precision, recall, specificity, F1, accuracy, and balanced accuracy.
+- Brier score and log loss for probability quality.
+- Confusion-matrix counts and a classification report.
+
+It also generates a four-panel dashboard with ROC, precision-recall, confusion-matrix, and calibration plots.
+
+### Explain predictions with SHAP
+
+Run:
+
+```bash
+python explain_model.py
+```
+
+The script uses SHAP's `LinearExplainer` for the fitted Logistic Regression classifier after applying the pipeline's fitted preprocessing step. It samples a reproducible background set from the training partition and explains held-out test customers.
+
+Generated outputs include:
+
+- `shap_summary.png`: global SHAP beeswarm summary.
+- `shap_importance.png`: global mean absolute SHAP importance.
+- `shap_waterfall.png`: explanation for one held-out customer.
+- `shap_feature_importance.csv`: ranked mean absolute SHAP values.
+
+**How to interpret SHAP:** positive values move the classifier's raw score toward the churn class; negative values move it away from churn. For this linear classifier, the explanation is in log-odds space—not a direct percentage-point change in churn probability. SHAP describes the model's learned associations, not causal effects.
+
+Both scripts write generated files to the local `reports/` directory. The held-out test data is used for final reporting and explanations, not for choosing a new threshold or tuning the model.
+
 ## Limitations
 
 - The model uses a public historical dataset, which may not represent current customer behavior.
