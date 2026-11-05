@@ -18,3 +18,11 @@ htmlcov/
 
 # Operating system
 .DS_Store
+
+# Generated Python artifacts
+*.egg-info/
+.pytest_cache/
+
+# Local environment and editor files
+.vscode/
+.idea/

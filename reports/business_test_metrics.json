@@ -1,0 +1,17 @@
+{
+    "evaluation_split": "Stratified 20% holdout; random_state=42",
+    "threshold": 0.35,
+    "test_samples": 1409,
+    "accuracy": 0.7643718949609652,
+    "balanced_accuracy": 0.745694799658994,
+    "roc_auc": 0.8421349040274871,
+    "average_precision": 0.6343385058492537,
+    "precision": 0.5432098765432098,
+    "recall": 0.7058823529411765,
+    "specificity": 0.7855072463768116,
+    "f1": 0.6139534883720931,
+    "true_negatives": 813,
+    "false_positives": 222,
+    "false_negatives": 110,
+    "true_positives": 264
+}

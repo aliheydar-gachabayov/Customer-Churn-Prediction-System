@@ -1,272 +1,350 @@
 
+import time
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
+from sklearn.base import clone
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import (
+    GradientBoostingClassifier,
+    RandomForestClassifier,
+)
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    classification_report,
-    roc_auc_score
+    average_precision_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
 )
 from sklearn.model_selection import (
     StratifiedKFold,
-    cross_val_score,
-    train_test_split
+    cross_val_predict,
+    train_test_split,
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 
-# ==========================================
-# 1. LOAD DATA
-# ==========================================
+RANDOM_STATE = 42
+OUTER_FOLDS = 5
+INNER_FOLDS = 4
 
-BASE_DIR = Path(__file__).resolve().parent
-DATA_PATH = BASE_DIR / "data" / "Telco-Customer-Churn.csv"
+DATA_PATH = Path("data/Telco-Customer-Churn.csv")
+REPORTS_DIR = Path("reports")
+REPORTS_DIR.mkdir(exist_ok=True)
 
-df = pd.read_csv(DATA_PATH)
 
-# Convert TotalCharges to numeric.
-# Blank values belong to customers with zero tenure.
-df["TotalCharges"] = pd.to_numeric(
-    df["TotalCharges"].str.strip(),
-    errors="coerce"
-).fillna(0)
+def load_data():
+    df = pd.read_csv(DATA_PATH)
 
-# Encode target
-y = df["Churn"].map({"No": 0, "Yes": 1})
-
-if y.isna().any():
-    raise ValueError("Unexpected target values detected.")
-
-# ==========================================
-# 2. DEFINE FEATURE SETS
-# ==========================================
-
-baseline_features = [
-    "tenure",
-    "MonthlyCharges",
-    "Contract",
-    "InternetService"
-]
-
-all_features = [
-    column for column in df.columns
-    if column not in ["customerID", "Churn"]
-]
-
-numeric_features = [
-    "SeniorCitizen",
-    "tenure",
-    "MonthlyCharges",
-    "TotalCharges"
-]
-
-# ==========================================
-# 3. TRAIN / TEST SPLIT
-# ==========================================
-
-X = df[all_features]
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    stratify=y,
-    random_state=42
-)
-
-# ==========================================
-# 4. CROSS-VALIDATION
-# ==========================================
-
-cv = StratifiedKFold(
-    n_splits=5,
-    shuffle=True,
-    random_state=42
-)
-
-# ==========================================
-# 5. DEFINE MODELS
-# ==========================================
-
-models = {
-    "Logistic Regression": LogisticRegression(
-        max_iter=2000
-    ),
-
-    "Random Forest": RandomForestClassifier(
-        n_estimators=300,
-        random_state=42,
-        n_jobs=-1
+    df["TotalCharges"] = pd.to_numeric(
+        df["TotalCharges"], errors="coerce"
     )
-}
 
-# ==========================================
-# 6. BUILD PREPROCESSING PIPELINE
-# ==========================================
+    df["Churn"] = df["Churn"].map({"No": 0, "Yes": 1})
 
-def make_pipeline(features, classifier):
+    df = df.drop(columns=["customerID"])
 
-    numerical = [
-        column for column in features
-        if column in numeric_features
-    ]
+    X = df.drop(columns=["Churn"])
+    y = df["Churn"]
 
-    categorical = [
-        column for column in features
-        if column not in numeric_features
-    ]
+    return X, y
 
-    transformers = []
 
-    if numerical:
-        numeric_pipeline = Pipeline([
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler())
-        ])
+def build_pipeline(model, X):
+    numeric_features = X.select_dtypes(
+        include=["int64", "float64"]
+    ).columns.tolist()
 
-        transformers.append((
-            "numeric",
-            numeric_pipeline,
-            numerical
-        ))
+    categorical_features = X.select_dtypes(
+        include=["object", "category", "bool"]
+    ).columns.tolist()
 
-    if categorical:
-        categorical_pipeline = Pipeline([
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("encoder", OneHotEncoder(
-                handle_unknown="ignore"
-            ))
-        ])
+    numeric_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="median")),
+        ("scaler", StandardScaler()),
+    ])
 
-        transformers.append((
-            "categorical",
-            categorical_pipeline,
-            categorical
-        ))
+    categorical_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        (
+            "onehot",
+            OneHotEncoder(
+                handle_unknown="ignore",
+                sparse_output=False,
+            ),
+        ),
+    ])
 
-    preprocessor = ColumnTransformer(transformers)
+    preprocessing = ColumnTransformer([
+        ("numeric", numeric_pipeline, numeric_features),
+        ("categorical", categorical_pipeline, categorical_features),
+    ])
 
     return Pipeline([
-        ("preprocessor", preprocessor),
-        ("classifier", classifier)
+        ("preprocessing", preprocessing),
+        ("classifier", model),
     ])
 
 
-# ==========================================
-# 7. RUN EXPERIMENTS USING CROSS-VALIDATION
-# ==========================================
+def select_threshold(y_true, probabilities):
+    thresholds = np.arange(0.10, 0.801, 0.01)
 
-feature_sets = {
-    "Original 4 Features": baseline_features,
-    "All 19 Features": all_features
-}
+    scores = []
 
-results = []
+    for threshold in thresholds:
+        predictions = (probabilities >= threshold).astype(int)
+        score = f1_score(y_true, predictions, zero_division=0)
+        scores.append((score, threshold))
 
-for feature_name, features in feature_sets.items():
+    # If F1 scores tie, prefer the higher threshold.
+    best_f1, best_threshold = max(scores, key=lambda item: (item[0], item[1]))
 
-    print("\n" + "=" * 60)
-    print(f"FEATURE SET: {feature_name}")
-    print("=" * 60)
+    return float(best_threshold)
 
-    for model_name, classifier in models.items():
 
-        pipeline = make_pipeline(
-            features,
-            classifier
-        )
+def evaluate_configuration(name, feature_set, model, X, y):
+    outer_cv = StratifiedKFold(
+        n_splits=OUTER_FOLDS,
+        shuffle=True,
+        random_state=RANDOM_STATE,
+    )
 
-        scores = cross_val_score(
-            pipeline,
-            X_train[features],
+    inner_cv = StratifiedKFold(
+        n_splits=INNER_FOLDS,
+        shuffle=True,
+        random_state=RANDOM_STATE,
+    )
+
+    outer_probabilities = np.zeros(len(y), dtype=float)
+    outer_predictions = np.zeros(len(y), dtype=int)
+    selected_thresholds = []
+
+    start_time = time.perf_counter()
+
+    for fold, (train_idx, validation_idx) in enumerate(
+        outer_cv.split(X, y), start=1
+    ):
+        X_train = X.iloc[train_idx]
+        X_validation = X.iloc[validation_idx]
+
+        y_train = y.iloc[train_idx]
+        y_validation = y.iloc[validation_idx]
+
+        pipeline = build_pipeline(clone(model), X_train)
+
+        # Select the threshold using only inner out-of-fold predictions.
+        inner_probabilities = cross_val_predict(
+            clone(pipeline),
+            X_train,
             y_train,
-            cv=cv,
-            scoring="roc_auc",
-            n_jobs=-1
+            cv=inner_cv,
+            method="predict_proba",
+            n_jobs=1,
+        )[:, 1]
+
+        threshold = select_threshold(
+            y_train,
+            inner_probabilities,
         )
 
-        results.append({
-            "Feature Set": feature_name,
-            "Model": model_name,
-            "CV Mean": scores.mean(),
-            "CV Std": scores.std()
-        })
+        # Fit on the complete outer training fold.
+        pipeline.fit(X_train, y_train)
 
-        print(f"\nModel: {model_name}")
-        print(f"CV ROC-AUC: {scores.mean():.4f}")
-        print(f"CV Std: {scores.std():.4f}")
+        # Evaluate on the untouched outer validation fold.
+        validation_probabilities = pipeline.predict_proba(
+            X_validation
+        )[:, 1]
+
+        validation_predictions = (
+            validation_probabilities >= threshold
+        ).astype(int)
+
+        outer_probabilities[validation_idx] = validation_probabilities
+        outer_predictions[validation_idx] = validation_predictions
+        selected_thresholds.append(threshold)
+
+        print(
+            f"  Fold {fold}/{OUTER_FOLDS}: "
+            f"threshold={threshold:.2f}"
+        )
+
+    elapsed_time = time.perf_counter() - start_time
+
+    return {
+        "feature_set": feature_set,
+        "model": name,
+        "roc_auc": roc_auc_score(y, outer_probabilities),
+        "average_precision": average_precision_score(
+            y, outer_probabilities
+        ),
+        "precision": precision_score(
+            y, outer_predictions, zero_division=0
+        ),
+        "recall": recall_score(
+            y, outer_predictions, zero_division=0
+        ),
+        "f1": f1_score(
+            y, outer_predictions, zero_division=0
+        ),
+        "mean_threshold": np.mean(selected_thresholds),
+        "threshold_std": np.std(selected_thresholds),
+        "evaluation_time_seconds": elapsed_time,
+    }
 
 
-# ==========================================
-# 8. SELECT BEST CONFIGURATION
-# ==========================================
+def plot_results(results):
+    metrics = ["roc_auc", "average_precision", "f1"]
 
-results_df = pd.DataFrame(results)
+    fig, axes = plt.subplots(1, 3, figsize=(17, 5))
 
-results_df = results_df.sort_values(
-    by="CV Mean",
-    ascending=False
-)
+    for ax, metric in zip(axes, metrics):
+        pivot = results.pivot(
+            index="model",
+            columns="feature_set",
+            values=metric,
+        )
 
-print("\n" + "=" * 60)
-print("FINAL CROSS-VALIDATION COMPARISON")
-print("=" * 60)
+        pivot.plot(kind="bar", ax=ax)
 
-print(results_df.to_string(index=False))
+        ax.set_title(metric.replace("_", " ").title())
+        ax.set_ylabel("Score")
+        ax.set_ylim(0, 1)
+        ax.tick_params(axis="x", rotation=20)
+        ax.legend(title="Feature set")
 
-best_result = results_df.iloc[0]
+    plt.tight_layout()
 
-best_feature_name = best_result["Feature Set"]
-best_model_name = best_result["Model"]
+    output_path = REPORTS_DIR / "model_comparison_nested_cv.png"
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
 
-best_features = feature_sets[best_feature_name]
-best_classifier = models[best_model_name]
-
-print("\nSelected configuration:")
-print(f"Features: {best_feature_name}")
-print(f"Model: {best_model_name}")
+    print(f"\nSaved chart: {output_path}")
 
 
-# ==========================================
-# 9. FINAL TEST EVALUATION
-# ==========================================
+def main():
+    X, y = load_data()
 
-final_pipeline = make_pipeline(
-    best_features,
-    best_classifier
-)
+    # Keep the final test set separate from model comparison.
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.20,
+        stratify=y,
+        random_state=RANDOM_STATE,
+    )
 
-final_pipeline.fit(
-    X_train[best_features],
-    y_train
-)
+    print(f"Training samples: {len(X_train)}")
+    print(f"Final test samples reserved: {len(X_test)}")
+    print(f"Outer folds: {OUTER_FOLDS}")
+    print(f"Inner folds: {INNER_FOLDS}")
 
-test_probabilities = final_pipeline.predict_proba(
-    X_test[best_features]
-)[:, 1]
+    feature_sets = {
+        "Original 4": [
+            "tenure",
+            "MonthlyCharges",
+            "Contract",
+            "InternetService",
+        ],
+        "All Features": X_train.columns.tolist(),
+    }
 
-test_predictions = final_pipeline.predict(
-    X_test[best_features]
-)
+    models = {
+        "Logistic Regression": LogisticRegression(
+            max_iter=2000,
+            random_state=RANDOM_STATE,
+        ),
+        "Random Forest": RandomForestClassifier(
+            n_estimators=300,
+            min_samples_leaf=2,
+            random_state=RANDOM_STATE,
+            n_jobs=1,
+        ),
+        "Gradient Boosting": GradientBoostingClassifier(
+            n_estimators=100,
+            learning_rate=0.05,
+            max_depth=2,
+            random_state=RANDOM_STATE,
+        ),
+    }
 
-test_auc = roc_auc_score(
-    y_test,
-    test_probabilities
-)
+    results = []
 
-print("\n" + "=" * 60)
-print("FINAL TEST SET EVALUATION")
-print("=" * 60)
+    for feature_set_name, features in feature_sets.items():
+        X_subset = X_train[features].copy()
 
-print(f"Test ROC-AUC: {test_auc:.4f}")
+        print(f"\n{'=' * 65}")
+        print(f"FEATURE SET: {feature_set_name}")
+        print(f"{'=' * 65}")
 
-print("\nClassification Report:")
-print(classification_report(
-    y_test,
-    test_predictions
-))
+        for model_name, model in models.items():
+            print(f"\nEvaluating: {model_name}")
+
+            result = evaluate_configuration(
+                name=model_name,
+                feature_set=feature_set_name,
+                model=model,
+                X=X_subset,
+                y=y_train,
+            )
+
+            results.append(result)
+
+            print(
+                f"  ROC-AUC: {result['roc_auc']:.4f}\n"
+                f"  Average Precision: {result['average_precision']:.4f}\n"
+                f"  Precision: {result['precision']:.4f}\n"
+                f"  Recall: {result['recall']:.4f}\n"
+                f"  F1: {result['f1']:.4f}\n"
+                f"  Mean threshold: {result['mean_threshold']:.3f}\n"
+                f"  Evaluation time: "
+                f"{result['evaluation_time_seconds']:.2f}s"
+            )
+
+    results_df = pd.DataFrame(results)
+
+    results_df = results_df.sort_values(
+        by="roc_auc",
+        ascending=False,
+    )
+
+    csv_path = REPORTS_DIR / "model_comparison_nested_cv.csv"
+    results_df.to_csv(csv_path, index=False)
+
+    print("\n" + "=" * 85)
+    print("FINAL NESTED CROSS-VALIDATION RESULTS")
+    print("=" * 85)
+
+    print(
+        results_df.to_string(
+            index=False,
+            formatters={
+                "roc_auc": "{:.4f}".format,
+                "average_precision": "{:.4f}".format,
+                "precision": "{:.4f}".format,
+                "recall": "{:.4f}".format,
+                "f1": "{:.4f}".format,
+                "mean_threshold": "{:.3f}".format,
+                "threshold_std": "{:.3f}".format,
+                "evaluation_time_seconds": "{:.2f}".format,
+            },
+        )
+    )
+
+    print(f"\nSaved results: {csv_path}")
+
+    plot_results(results_df)
+
+    print(
+        "\nThe final held-out test set was not used for model "
+        "selection or threshold tuning."
+    )
+
+
+if __name__ == "__main__":
+    main()

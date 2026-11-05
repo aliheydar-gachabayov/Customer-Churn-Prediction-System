@@ -1,20 +1,25 @@
 # Customer Churn Prediction System
 
-An end-to-end machine learning application that predicts customer churn for a telecommunications company. The project combines a scikit-learn classification pipeline, a FastAPI REST API, an interactive web interface, automated tests, and Docker containerization.
+An end-to-end machine learning application that predicts customer churn for a telecommunications company. The project combines a scikit-learn classification pipeline, model evaluation and explainability, a FastAPI REST API, an interactive web interface, automated tests, and Docker containerization.
 
-The goal is to identify customers who are likely to leave a service and provide probability-based churn predictions.
+The goal is to identify customers who are likely to leave a service and provide probability-based churn predictions that can support customer retention decisions.
 
 ## Features
 
-- Compares Logistic Regression and Random Forest using stratified 5-fold cross-validation.
-- Evaluates models using ROC-AUC.
-- Uses 19 customer features for prediction.
-- Automatically selects a classification threshold using out-of-fold predictions.
-- Provides a REST API built with FastAPI.
-- Validates customer input, including dependencies between subscribed services.
-- Includes an interactive web interface.
-- Includes automated API tests.
-- Supports Docker-based deployment with a container health check.
+- End-to-end customer churn prediction pipeline.
+- Data preprocessing with scikit-learn pipelines and `ColumnTransformer`.
+- Comparison of Logistic Regression, Random Forest, and Gradient Boosting.
+- Evaluation using nested stratified cross-validation.
+- Comparison of two feature sets: four selected features and all 19 features.
+- Out-of-fold classification threshold optimization.
+- Final evaluation on a separate held-out test set.
+- Model explainability using SHAP.
+- REST API built with FastAPI.
+- Input validation, including dependencies between subscribed services.
+- Interactive web interface.
+- Automated API tests with Pytest.
+- GitHub Actions continuous integration.
+- Docker-based application deployment with a container health check.
 
 ## Tech Stack
 
@@ -22,12 +27,15 @@ The goal is to identify customers who are likely to leave a service and provide 
 |---|---|
 | Language | Python |
 | Machine Learning | scikit-learn |
+| Explainability | SHAP |
 | Data Processing | Pandas, NumPy |
+| Visualization | Matplotlib |
 | Model Serialization | Joblib |
 | Backend | FastAPI, Uvicorn |
 | Validation | Pydantic |
 | Frontend | HTML, CSS, JavaScript |
 | Testing | Pytest, HTTPX |
+| CI/CD | GitHub Actions |
 | Containerization | Docker |
 
 ## Dataset
@@ -47,52 +55,91 @@ The model uses 19 input features and excludes the customer identifier and target
 The preprocessing pipeline includes:
 
 - Conversion of `TotalCharges` to numeric values.
-- Replacement of blank `TotalCharges` values with zero before the pipeline (the dataset's blank entries correspond to zero-tenure customers).
-- Handling any remaining missing numerical values using median imputation.
-- Handling missing categorical values using most-frequent imputation.
+- Median imputation for missing numerical values.
+- Most-frequent imputation for missing categorical values.
 - Standardization of numerical features.
 - One-hot encoding of categorical features.
 
-Preprocessing is implemented using scikit-learn pipelines and a `ColumnTransformer` to ensure transformations are fitted on training data.
+Preprocessing is implemented using scikit-learn pipelines and a `ColumnTransformer`.
+
+All preprocessing transformations are fitted within the training folds, preventing information from validation or test partitions from leaking into preprocessing.
 
 ### 2. Model comparison
 
-Two classification algorithms were evaluated:
+Three classification algorithms were evaluated:
 
 - Logistic Regression
 - Random Forest
+- Gradient Boosting
 
-The models were compared using stratified 5-fold cross-validation and ROC-AUC.
+Two feature configurations were compared:
 
-| Model configuration | Mean CV ROC-AUC |
-|---|---:|
-| Logistic Regression — 19 features | **0.8462** |
-| Logistic Regression — 4 features | 0.8345 |
-| Random Forest — 19 features | 0.8205 |
-| Random Forest — 4 features | 0.7941 |
+- **Original 4:** `tenure`, `MonthlyCharges`, `Contract`, and `InternetService`.
+- **All Features:** all 19 customer features.
 
-Logistic Regression using all 19 features achieved the highest mean cross-validation ROC-AUC and was selected.
+Model selection used nested stratified cross-validation:
+
+- Outer cross-validation: 5 folds.
+- Inner cross-validation: 4 folds.
+- The inner folds select a classification threshold using training-only out-of-fold predictions.
+- Each outer validation fold evaluates the model and its selected threshold on data not used for fitting or threshold selection.
+
+ROC-AUC and average precision evaluate ranking performance. Precision, recall, and F1 evaluate predictions using the threshold selected within each outer training fold.
+
+#### Nested cross-validation results
+
+| Model configuration | ROC-AUC | Average Precision | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|
+| Gradient Boosting — All Features | **0.8481** | **0.6616** | 0.5595 | 0.7264 | 0.6321 |
+| Logistic Regression — All Features | 0.8456 | 0.6583 | 0.5392 | **0.7639** | **0.6322** |
+| Gradient Boosting — Original 4 | 0.8396 | 0.6433 | 0.5264 | 0.7659 | 0.6240 |
+| Random Forest — All Features | 0.8363 | 0.6370 | 0.5460 | 0.7298 | 0.6247 |
+| Logistic Regression — Original 4 | 0.8334 | 0.6286 | 0.5302 | 0.7331 | 0.6154 |
+| Random Forest — Original 4 | 0.8132 | 0.6021 | 0.4895 | 0.7632 | 0.5964 |
+
+Gradient Boosting with all features achieved the highest ROC-AUC and average precision.
+
+Logistic Regression with all features achieved the highest F1-score, practically tied with Gradient Boosting, and the highest recall among the six configurations.
+
+Logistic Regression was selected as the final model because it provides competitive predictive performance, higher recall, lower computational cost, and a simpler, more interpretable model.
+
+The performance differences are small and should not be interpreted as proof that one algorithm is universally superior.
+
+The comparison results are generated by:
+
+```bash
+python experiment_models.py
+```
+
+Outputs:
+
+- `reports/model_comparison_nested_cv.csv`
+- `reports/model_comparison_nested_cv.png`
 
 ### 3. Decision threshold optimization
 
-Instead of automatically using the default classification threshold of 0.50, the project selects a threshold using out-of-fold prediction probabilities generated from the training data.
+Instead of automatically using the default classification threshold of 0.50, the final training pipeline selects a threshold using out-of-fold prediction probabilities generated from the training partition.
 
-The threshold selection process uses:
+The final threshold selection process uses:
 
 - `StratifiedKFold` with 5 folds.
 - `cross_val_predict` to generate out-of-fold probabilities.
-- Seven candidate thresholds: 0.30, 0.35, 0.40, 0.45, 0.50, 0.55, and 0.60.
-- F1-score to select the best threshold.
+- Candidate thresholds from 0.10 to 0.80 in increments of 0.01.
+- F1-score as the threshold selection metric.
 
-The selected threshold was **0.35**, with an out-of-fold F1-score of 0.6353.
+The selected threshold for the final Logistic Regression model was **0.32**.
 
-Threshold selection is performed automatically during training. The selected threshold and trained model are saved together in `models/churn_model.joblib`, allowing the API to use the same threshold during prediction.
+The threshold is selected using training data only. The held-out test partition is not used for threshold optimization.
 
-The held-out test set is not used for threshold selection.
+The threshold and fitted model are saved together in:
 
-The out-of-fold F1-score is used to select the threshold, so it should be interpreted as a threshold-selection score rather than an independent estimate of generalization performance. The held-out test metrics provide the final evaluation.
+`models/churn_model.joblib`
 
-### Threshold trade-off analysis
+The threshold represents a classification decision boundary, not a change to the underlying predicted probabilities.
+
+Threshold selection based on the complete set of out-of-fold training predictions can still introduce some selection optimism. Final performance is therefore reported separately using the untouched held-out test partition.
+
+### 4. Threshold trade-off analysis
 
 Run:
 
@@ -100,44 +147,116 @@ Run:
 python threshold_analysis.py
 ```
 
-This script recreates the training partition and generates out-of-fold probabilities with stratified 5-fold cross-validation. It compares precision, recall, specificity, F1, false positives, and false negatives over thresholds from 0.10 to 0.80.
+This script compares precision, recall, specificity, F1, false positives, and false negatives across classification thresholds.
 
 Outputs:
-- `reports/threshold_analysis.png`: metric and error-count curves.
-- `reports/threshold_analysis.csv`: threshold-by-threshold metrics.
 
-Threshold selection is based on out-of-fold training predictions only. The script also reports the saved threshold and the best F1 threshold for comparison. The best F1 threshold is not automatically the best business threshold: the relative costs of missed churners and unnecessary retention outreach should guide the final choice. The held-out test partition remains reserved for final evaluation.
+- `reports/threshold_analysis.png`
+- `reports/threshold_analysis.csv`
 
-## Model Evaluation
+The analysis helps illustrate the trade-off between identifying more potential churners and generating additional false-positive predictions.
 
-The selected Logistic Regression model was evaluated on a held-out test set representing 20% of the dataset.
+## Final Model Evaluation
+
+The selected Logistic Regression model was evaluated on a stratified 20% held-out test partition containing 1,409 customers.
+
+The final test evaluation used the saved decision threshold of 0.32.
+
+### Final test metrics
 
 | Metric | Test result |
 |---|---:|
-| ROC-AUC | **0.8421** |
-| Precision | 0.5432 |
-| Recall | 0.7059 |
-| F1-score | 0.6140 |
-| Decision threshold | 0.35 |
+| ROC-AUC | **0.8419** |
+| Average Precision | 0.6335 |
+| Accuracy | 75.80% |
+| Balanced Accuracy | 74.82% |
+| Precision | 53.23% |
+| Recall | 72.73% |
+| Specificity | 76.91% |
+| F1-score | 0.6147 |
+| Brier Score | 0.1381 |
+| Log Loss | 0.4205 |
+| Decision Threshold | **0.32** |
 
 ### Confusion Matrix
 
-| | Predicted churn | Predicted no churn |
+| | Predicted no churn | Predicted churn |
 |---|---:|---:|
-| Actual churn | 264 | 110 |
-| Actual no churn | 222 | 813 |
+| Actual no churn | 796 | 239 |
+| Actual churn | 102 | 272 |
 
-The selected threshold prioritizes identifying more customers who are likely to churn. This increases recall but also generates more false-positive predictions.
+The model correctly identified 272 of the 374 customers who churned in the test partition.
+
+The recall of 72.73% indicates that the model identified approximately 73% of actual churners.
+
+The model also produced 239 false-positive predictions, illustrating the trade-off between detecting potential churn and unnecessary retention outreach.
+
+The evaluation script recreates the original stratified 80/20 split using `random_state=42` and loads the saved model and threshold.
+
+Run:
+
+```bash
+python evaluate_model.py
+```
+
+Outputs:
+
+- `reports/evaluation_metrics.json`
+- `reports/evaluation_dashboard.png`
+
+The dashboard includes ROC, precision-recall, confusion-matrix, and calibration plots.
+
+## Model Explainability with SHAP
+
+The project uses SHAP's `LinearExplainer` to interpret the fitted Logistic Regression classifier.
+
+The explainability process:
+
+- Uses a reproducible background sample of up to 200 training customers.
+- Explains up to 500 customers from the held-out test partition.
+- Applies the fitted preprocessing pipeline before SHAP analysis.
+- Calculates global feature importance and individual customer explanations.
+
+Run:
+
+```bash
+python explain_model.py
+```
+
+Generated outputs:
+
+- `reports/shap_summary.png`: global SHAP beeswarm plot.
+- `reports/shap_importance.png`: mean absolute SHAP feature importance.
+- `reports/shap_waterfall.png`: explanation of an individual customer.
+- `reports/shap_feature_importance.csv`: ranked feature importance values.
+
+### Most influential features
+
+The highest mean absolute SHAP values in the generated analysis were:
+
+| Feature | Mean absolute SHAP |
+|---|---:|
+| Tenure | 1.1192 |
+| Monthly Charges | 0.5188 |
+| Total Charges | 0.4444 |
+| Internet Service — Fiber optic | 0.3147 |
+| Internet Service — DSL | 0.2913 |
+
+Positive SHAP values move the classifier's raw score toward the churn class, while negative values move it away from churn.
+
+For this Logistic Regression model, SHAP values are expressed in log-odds space, not as percentage-point changes in churn probability.
+
+SHAP describes the model's learned associations and does not establish causal relationships.
 
 ## Application Architecture
 
 The application consists of three main components:
 
-1. **Frontend:** A web interface for entering customer information and displaying predictions.
-2. **FastAPI backend:** Validates input, processes prediction requests, and returns results.
+1. **Frontend:** An interactive web interface for entering customer information and displaying predictions.
+2. **FastAPI backend:** Validates customer input, processes prediction requests, and returns results.
 3. **Machine learning model:** A trained scikit-learn pipeline loaded from a Joblib artifact.
 
-The frontend sends customer information to the `/predict` endpoint. The API validates the data, obtains the churn probability, applies the selected threshold, and returns the prediction.
+The frontend sends customer information to the `/predict` endpoint. The API validates the input, obtains the churn probability, applies the saved classification threshold, and returns the prediction.
 
 ## Project Structure
 
@@ -156,23 +275,42 @@ customer-churn-ml/
 ├── models/
 │   └── churn_model.joblib
 │
+├── reports/
+│   ├── evaluation_metrics.json
+│   ├── evaluation_dashboard.png
+│   ├── final_test_metrics.json
+│   ├── final_threshold_analysis.csv
+│   ├── model_comparison_nested_cv.csv
+│   ├── model_comparison_nested_cv.png
+│   ├── shap_summary.png
+│   ├── shap_importance.png
+│   ├── shap_waterfall.png
+│   └── shap_feature_importance.csv
+│
 ├── test/
 │   └── test_api.py
 │
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+│
 ├── analyze_features.py
 ├── analyze_thresholds.py
+├── evaluate_model.py
 ├── experiment_models.py
+├── explain_model.py
 ├── inspect_data.py
 ├── predict.py
+├── threshold_analysis.py
 ├── train.py
 │
-├── .dockerignore
-├── .gitignore
 ├── Dockerfile
 ├── README.md
 ├── requirements.txt
 └── requirements-dev.txt
 ```
+
+Generated report files are created locally when the corresponding scripts are executed.
 
 ## Getting Started
 
@@ -221,7 +359,7 @@ python -m pip install -r requirements-dev.txt
 uvicorn app.main:app --reload
 ```
 
-Open the following URLs:
+Open:
 
 - Web application: http://127.0.0.1:8000
 - Interactive API documentation: http://127.0.0.1:8000/docs
@@ -235,26 +373,48 @@ The trained model artifact is included in `models/`, so retraining is not requir
 python -m pytest -v
 ```
 
-The test suite currently contains 9 API tests covering successful predictions, response structure, numerical validation, and service-combination validation.
+The current test suite contains 9 API tests covering:
+
+- Home and health endpoints.
+- Successful predictions.
+- Response structure.
+- Numerical input validation.
+- Service-combination validation.
+
+The project also includes a GitHub Actions workflow for automated testing.
 
 ### 6. Reproduce model experiments and training
 
-To compare the model configurations:
+Compare the model configurations:
 
 ```bash
 python experiment_models.py
 ```
 
-To train the selected Logistic Regression model, automatically optimize its decision threshold, evaluate it, and save the artifact:
+Train the final Logistic Regression model, select its threshold, evaluate it, and save the model artifact:
 
 ```bash
 python train.py
 ```
 
-The trained model and selected threshold are saved to:
+The trained model and threshold are saved to:
 
 ```text
 models/churn_model.joblib
+```
+
+### 7. Run evaluation and explainability
+
+Evaluate the saved model:
+
+```bash
+python evaluate_model.py
+```
+
+Generate SHAP explanations:
+
+```bash
+python explain_model.py
 ```
 
 ## Docker
@@ -330,7 +490,7 @@ Example response (illustrative values):
 ```json
 {
   "churn_probability": 0.775,
-  "threshold": 0.35,
+  "threshold": 0.32,
   "prediction": 1,
   "risk_level": "High"
 }
@@ -343,72 +503,29 @@ Example response (illustrative values):
 | `churn_probability` | Estimated probability of customer churn |
 | `threshold` | Classification threshold used by the model |
 | `prediction` | `1` indicates likely churn; `0` indicates unlikely churn |
-| `risk_level` | `High` or `Low` based on the classification result |
+| `risk_level` | Risk category based on the classification result |
 
 Invalid input returns HTTP 422 with validation details.
-
-## Model evaluation and explainability
-
-Install the development dependencies (including Matplotlib and SHAP):
-
-```bash
-python -m pip install -r requirements-dev.txt
-```
-
-### Evaluate the saved model
-
-Run:
-
-```bash
-python evaluate_model.py
-```
-
-The script recreates the original stratified 80/20 split with `random_state=42`, loads the saved model and decision threshold, and evaluates only the held-out test partition. It reports:
-
-- ROC-AUC and average precision.
-- Precision, recall, specificity, F1, accuracy, and balanced accuracy.
-- Brier score and log loss for probability quality.
-- Confusion-matrix counts and a classification report.
-
-It also generates a four-panel dashboard with ROC, precision-recall, confusion-matrix, and calibration plots.
-
-### Explain predictions with SHAP
-
-Run:
-
-```bash
-python explain_model.py
-```
-
-The script uses SHAP's `LinearExplainer` for the fitted Logistic Regression classifier after applying the pipeline's fitted preprocessing step. It samples a reproducible background set from the training partition and explains held-out test customers.
-
-Generated outputs include:
-
-- `shap_summary.png`: global SHAP beeswarm summary.
-- `shap_importance.png`: global mean absolute SHAP importance.
-- `shap_waterfall.png`: explanation for one held-out customer.
-- `shap_feature_importance.csv`: ranked mean absolute SHAP values.
-
-**How to interpret SHAP:** positive values move the classifier's raw score toward the churn class; negative values move it away from churn. For this linear classifier, the explanation is in log-odds space—not a direct percentage-point change in churn probability. SHAP describes the model's learned associations, not causal effects.
-
-Both scripts write generated files to the local `reports/` directory. The held-out test data is used for final reporting and explanations, not for choosing a new threshold or tuning the model.
 
 ## Limitations
 
 - The model uses a public historical dataset, which may not represent current customer behavior.
 - Classification performance depends on the quality and representativeness of the dataset.
-- The selected decision threshold prioritizes recall and produces false-positive predictions.
+- The selected threshold prioritizes F1 and still produces false-positive predictions.
+- SHAP explanations describe model associations, not causal effects.
 - The application is an educational portfolio project, not a production-ready customer retention system.
 - Model performance should be monitored and periodically reevaluated before real-world deployment.
+- The nested cross-validation results and final held-out test results are estimates based on this dataset and split, not guarantees of future performance.
 
 ## Future Improvements
 
-- Add more extensive model evaluation and calibration.
 - Evaluate business costs associated with false positives and false negatives.
-- Add explainability techniques such as SHAP.
-- Introduce CI workflows for automated testing.
-- Deploy the application to a cloud platform.
+- Investigate calibration methods and probability reliability.
 - Add model monitoring and data drift detection.
+- Deploy the application to a cloud platform.
+- Add experiment tracking and model versioning.
+- Explore more advanced models and additional datasets.
+- Improve automated integration and deployment workflows.
 
 ---
 
