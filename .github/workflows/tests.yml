@@ -30,3 +30,16 @@ jobs:
 
       - name: Run API tests
         run: python -m pytest -v
+
+      - name: Run held-out model evaluation
+        run: python evaluate_model.py
+
+      - name: Generate SHAP explanations
+        run: python explain_model.py
+
+      - name: Upload evaluation reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: churn-model-analysis
+          path: reports/
+          if-no-files-found: error
