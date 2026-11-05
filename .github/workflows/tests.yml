@@ -31,6 +31,9 @@ jobs:
       - name: Run API tests
         run: python -m pytest -v
 
+      - name: Analyze decision thresholds
+        run: python threshold_analysis.py
+
       - name: Run held-out model evaluation
         run: python evaluate_model.py
 
