@@ -92,6 +92,22 @@ The held-out test set is not used for threshold selection.
 
 The out-of-fold F1-score is used to select the threshold, so it should be interpreted as a threshold-selection score rather than an independent estimate of generalization performance. The held-out test metrics provide the final evaluation.
 
+### Threshold trade-off analysis
+
+Run:
+
+```bash
+python threshold_analysis.py
+```
+
+This script recreates the training partition and generates out-of-fold probabilities with stratified 5-fold cross-validation. It compares precision, recall, specificity, F1, false positives, and false negatives over thresholds from 0.10 to 0.80.
+
+Outputs:
+- `reports/threshold_analysis.png`: metric and error-count curves.
+- `reports/threshold_analysis.csv`: threshold-by-threshold metrics.
+
+Threshold selection is based on out-of-fold training predictions only. The script also reports the saved threshold and the best F1 threshold for comparison. The best F1 threshold is not automatically the best business threshold: the relative costs of missed churners and unnecessary retention outreach should guide the final choice. The held-out test partition remains reserved for final evaluation.
+
 ## Model Evaluation
 
 The selected Logistic Regression model was evaluated on a held-out test set representing 20% of the dataset.
