@@ -77,7 +77,6 @@ def main():
         raise ValueError("Expected a pipeline with preprocessor and classifier steps.")
 
     X_train, X_test = load_data()
-    rng = np.random.RandomState(RANDOM_STATE)
     background = X_train.sample(
         n=min(BACKGROUND_SIZE, len(X_train)),
         random_state=RANDOM_STATE,
@@ -95,7 +94,13 @@ def main():
     feature_names = preprocessor.get_feature_names_out()
 
     explainer = shap.LinearExplainer(classifier, background_matrix)
-    shap_explanation = explainer(explanation_matrix)
+    raw_explanation = explainer(explanation_matrix)
+    shap_explanation = shap.Explanation(
+        values=raw_explanation.values,
+        base_values=raw_explanation.base_values,
+        data=explanation_matrix,
+        feature_names=list(feature_names),
+    )
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
