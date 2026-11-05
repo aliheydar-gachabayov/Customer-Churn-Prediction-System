@@ -1,7 +1,7 @@
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, threshold
 
 
 client = TestClient(app)
@@ -67,9 +67,11 @@ def test_prediction():
     result = response.json()
 
     assert 0 <= result["churn_probability"] <= 1
-    assert result["threshold"] == 0.35
+    assert result["threshold"] == threshold
     assert result["prediction"] in [0, 1]
-    assert result["risk_level"] in ["High", "Low"]
+    assert result["risk_level"] == (
+        "High" if result["prediction"] == 1 else "Low"
+    )
 
 
 def test_prediction_response_structure():
