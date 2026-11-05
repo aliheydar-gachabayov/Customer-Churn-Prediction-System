@@ -47,7 +47,8 @@ The model uses 19 input features and excludes the customer identifier and target
 The preprocessing pipeline includes:
 
 - Conversion of `TotalCharges` to numeric values.
-- Handling missing numerical values using median imputation.
+- Replacement of blank `TotalCharges` values with zero before the pipeline (the dataset's blank entries correspond to zero-tenure customers).
+- Handling any remaining missing numerical values using median imputation.
 - Handling missing categorical values using most-frequent imputation.
 - Standardization of numerical features.
 - One-hot encoding of categorical features.
