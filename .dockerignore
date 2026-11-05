@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.git/
+.DS_Store
+.env
+*.py[cod]
+
+data/
+test/
+analyze_features.py
+analyze_thresholds.py
+experiment_models.py
+inspect_data.py
+predict.py
+train.py

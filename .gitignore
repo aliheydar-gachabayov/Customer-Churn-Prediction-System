@@ -1,5 +1,20 @@
+# Python virtual environments
 .venv/
+venv/
+
+# Python cache
 __pycache__/
+*.py[cod]
+
+# Testing and coverage
 .pytest_cache/
-.DS_Store
+.coverage
+htmlcov/
+
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+
+# Operating system
+.DS_Store

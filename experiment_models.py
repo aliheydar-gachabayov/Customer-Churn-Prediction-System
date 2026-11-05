@@ -158,7 +158,7 @@ def make_pipeline(features, classifier):
 
 
 # ==========================================
-# 7. RUN EXPERIMENTS
+# 7. RUN EXPERIMENTS USING CROSS-VALIDATION
 # ==========================================
 
 feature_sets = {
@@ -190,53 +190,83 @@ for feature_name, features in feature_sets.items():
             n_jobs=-1
         )
 
-        pipeline.fit(
-            X_train[features],
-            y_train
-        )
-
-        probabilities = pipeline.predict_proba(
-            X_test[features]
-        )[:, 1]
-
-        test_auc = roc_auc_score(
-            y_test,
-            probabilities
-        )
-
         results.append({
             "Feature Set": feature_name,
             "Model": model_name,
             "CV Mean": scores.mean(),
-            "CV Std": scores.std(),
-            "Test ROC-AUC": test_auc
+            "CV Std": scores.std()
         })
 
         print(f"\nModel: {model_name}")
         print(f"CV ROC-AUC: {scores.mean():.4f}")
         print(f"CV Std: {scores.std():.4f}")
-        print(f"Test ROC-AUC: {test_auc:.4f}")
-
-        print("\nClassification Report:")
-        print(classification_report(
-            y_test,
-            pipeline.predict(X_test[features])
-        ))
 
 
 # ==========================================
-# 8. FINAL COMPARISON
+# 8. SELECT BEST CONFIGURATION
 # ==========================================
 
 results_df = pd.DataFrame(results)
 
+results_df = results_df.sort_values(
+    by="CV Mean",
+    ascending=False
+)
+
 print("\n" + "=" * 60)
-print("FINAL EXPERIMENT COMPARISON")
+print("FINAL CROSS-VALIDATION COMPARISON")
 print("=" * 60)
 
-print(
-    results_df.sort_values(
-        by="CV Mean",
-        ascending=False
-    ).to_string(index=False)
+print(results_df.to_string(index=False))
+
+best_result = results_df.iloc[0]
+
+best_feature_name = best_result["Feature Set"]
+best_model_name = best_result["Model"]
+
+best_features = feature_sets[best_feature_name]
+best_classifier = models[best_model_name]
+
+print("\nSelected configuration:")
+print(f"Features: {best_feature_name}")
+print(f"Model: {best_model_name}")
+
+
+# ==========================================
+# 9. FINAL TEST EVALUATION
+# ==========================================
+
+final_pipeline = make_pipeline(
+    best_features,
+    best_classifier
 )
+
+final_pipeline.fit(
+    X_train[best_features],
+    y_train
+)
+
+test_probabilities = final_pipeline.predict_proba(
+    X_test[best_features]
+)[:, 1]
+
+test_predictions = final_pipeline.predict(
+    X_test[best_features]
+)
+
+test_auc = roc_auc_score(
+    y_test,
+    test_probabilities
+)
+
+print("\n" + "=" * 60)
+print("FINAL TEST SET EVALUATION")
+print("=" * 60)
+
+print(f"Test ROC-AUC: {test_auc:.4f}")
+
+print("\nClassification Report:")
+print(classification_report(
+    y_test,
+    test_predictions
+))

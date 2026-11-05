@@ -20,8 +20,8 @@ body {
 }
 
 .container {
-    max-width: 800px;
-    margin: 60px auto;
+    max-width: 1000px;
+    margin: 50px auto;
     padding: 24px;
 }
 
@@ -44,6 +44,18 @@ h1 {
     padding: 30px;
     border-radius: 18px;
     border: 1px solid #334155;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+
+.section h2 {
+    font-size: 19px;
+    color: #38bdf8;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
 }
 
 .form-grid {
@@ -74,7 +86,7 @@ input:focus, select:focus {
 
 button {
     width: 100%;
-    margin-top: 25px;
+    margin-top: 10px;
     padding: 15px;
     background: #38bdf8;
     border: none;
@@ -140,6 +152,11 @@ button:disabled {
     text-align: center;
 }
 
+.threshold-info {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
 @media (max-width: 600px) {
     .container {
         margin: 20px auto;
@@ -171,35 +188,153 @@ button:disabled {
 
 <form id="predictionForm">
 
+<!-- CUSTOMER INFORMATION -->
+<div class="section">
+<h2>Customer Information</h2>
+
 <div class="form-grid">
 
 <div>
+    <label for="gender">Gender</label>
+    <select id="gender">
+        <option value="Female">Female</option>
+        <option value="Male">Male</option>
+    </select>
+</div>
+
+<div>
+    <label for="SeniorCitizen">Senior Citizen</label>
+    <select id="SeniorCitizen">
+        <option value="0">No</option>
+        <option value="1">Yes</option>
+    </select>
+</div>
+
+<div>
+    <label for="Partner">Has Partner</label>
+    <select id="Partner">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+    </select>
+</div>
+
+<div>
+    <label for="Dependents">Has Dependents</label>
+    <select id="Dependents">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+    </select>
+</div>
+
+<div>
     <label for="tenure">Customer Tenure (Months)</label>
-    <input
-        type="number"
-        id="tenure"
-        min="0"
-        max="72"
-        value="12"
-        required
-    >
+    <input type="number" id="tenure"
+        min="0" max="72" value="12" required>
+</div>
+
+</div>
+</div>
+
+
+<!-- SERVICES -->
+<div class="section">
+<h2>Subscribed Services</h2>
+
+<div class="form-grid">
+
+<div>
+    <label for="PhoneService">Phone Service</label>
+    <select id="PhoneService">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
+    </select>
 </div>
 
 <div>
-    <label for="charges">Monthly Charges ($)</label>
-    <input
-        type="number"
-        id="charges"
-        min="0"
-        step="0.01"
-        value="75"
-        required
-    >
+    <label for="MultipleLines">Multiple Lines</label>
+    <select id="MultipleLines">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No phone service">No phone service</option>
+    </select>
 </div>
 
 <div>
-    <label for="contract">Contract Type</label>
-    <select id="contract">
+    <label for="InternetService">Internet Service</label>
+    <select id="InternetService">
+        <option value="Fiber optic">Fiber optic</option>
+        <option value="DSL">DSL</option>
+        <option value="No">No internet</option>
+    </select>
+</div>
+
+<div>
+    <label for="OnlineSecurity">Online Security</label>
+    <select id="OnlineSecurity">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No internet service">No internet service</option>
+    </select>
+</div>
+
+<div>
+    <label for="OnlineBackup">Online Backup</label>
+    <select id="OnlineBackup">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No internet service">No internet service</option>
+    </select>
+</div>
+
+<div>
+    <label for="DeviceProtection">Device Protection</label>
+    <select id="DeviceProtection">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No internet service">No internet service</option>
+    </select>
+</div>
+
+<div>
+    <label for="TechSupport">Technical Support</label>
+    <select id="TechSupport">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No internet service">No internet service</option>
+    </select>
+</div>
+
+<div>
+    <label for="StreamingTV">Streaming TV</label>
+    <select id="StreamingTV">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No internet service">No internet service</option>
+    </select>
+</div>
+
+<div>
+    <label for="StreamingMovies">Streaming Movies</label>
+    <select id="StreamingMovies">
+        <option value="No">No</option>
+        <option value="Yes">Yes</option>
+        <option value="No internet service">No internet service</option>
+    </select>
+</div>
+
+</div>
+</div>
+
+
+<!-- BILLING -->
+<div class="section">
+<h2>Contract and Billing</h2>
+
+<div class="form-grid">
+
+<div>
+    <label for="Contract">Contract Type</label>
+    <select id="Contract">
         <option value="Month-to-month">Month-to-month</option>
         <option value="One year">One year</option>
         <option value="Two year">Two year</option>
@@ -207,14 +342,36 @@ button:disabled {
 </div>
 
 <div>
-    <label for="internet">Internet Service</label>
-    <select id="internet">
-        <option value="Fiber optic">Fiber optic</option>
-        <option value="DSL">DSL</option>
-        <option value="No">No internet</option>
+    <label for="PaperlessBilling">Paperless Billing</label>
+    <select id="PaperlessBilling">
+        <option value="Yes">Yes</option>
+        <option value="No">No</option>
     </select>
 </div>
 
+<div>
+    <label for="PaymentMethod">Payment Method</label>
+    <select id="PaymentMethod">
+        <option value="Electronic check">Electronic check</option>
+        <option value="Mailed check">Mailed check</option>
+        <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+        <option value="Credit card (automatic)">Credit card (automatic)</option>
+    </select>
+</div>
+
+<div>
+    <label for="MonthlyCharges">Monthly Charges ($)</label>
+    <input type="number" id="MonthlyCharges"
+        min="0" step="0.01" value="75" required>
+</div>
+
+<div>
+    <label for="TotalCharges">Total Charges ($)</label>
+    <input type="number" id="TotalCharges"
+        min="0" step="0.01" value="900" required>
+</div>
+
+</div>
 </div>
 
 <button type="submit" id="submitBtn">
@@ -227,6 +384,7 @@ button:disabled {
 
 <div id="result" class="result" aria-live="polite">
     <h2>Prediction Result</h2>
+
     <div id="probability" class="probability"></div>
 
     <div class="progress">
@@ -235,6 +393,7 @@ button:disabled {
 
     <p id="riskLevel"></p>
     <p id="message" class="message"></p>
+    <p id="thresholdInfo" class="threshold-info"></p>
 
     <p class="note">
         This is an educational ML prediction,
@@ -248,6 +407,69 @@ button:disabled {
 <script>
 const form = document.getElementById("predictionForm");
 const button = document.getElementById("submitBtn");
+// ==========================================
+// AUTOMATIC SERVICE VALIDATION
+// ==========================================
+
+const internetServiceFields = [
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies"
+];
+
+function updateInternetFields() {
+
+    const internetService =
+        document.getElementById("InternetService").value;
+
+    internetServiceFields.forEach(fieldId => {
+
+        const field = document.getElementById(fieldId);
+
+        if (internetService === "No") {
+            field.value = "No internet service";
+            field.disabled = true;
+        } else {
+            field.disabled = false;
+
+            if (field.value === "No internet service") {
+                field.value = "No";
+            }
+        }
+    });
+}
+
+function updatePhoneFields() {
+
+    const phoneService =
+        document.getElementById("PhoneService").value;
+
+    const multipleLines =
+        document.getElementById("MultipleLines");
+
+    if (phoneService === "No") {
+        multipleLines.value = "No phone service";
+        multipleLines.disabled = true;
+    } else {
+        multipleLines.disabled = false;
+
+        if (multipleLines.value === "No phone service") {
+            multipleLines.value = "No";
+        }
+    }
+}
+
+document.getElementById("InternetService")
+    .addEventListener("change", updateInternetFields);
+
+document.getElementById("PhoneService")
+    .addEventListener("change", updatePhoneFields);
+
+updateInternetFields();
+updatePhoneFields();
 
 form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -257,14 +479,30 @@ form.addEventListener("submit", async (event) => {
 
     result.style.display = "none";
     error.textContent = "";
+
     button.disabled = true;
     button.textContent = "Predicting...";
 
     const customer = {
+        gender: document.getElementById("gender").value,
+        SeniorCitizen: Number(document.getElementById("SeniorCitizen").value),
+        Partner: document.getElementById("Partner").value,
+        Dependents: document.getElementById("Dependents").value,
         tenure: Number(document.getElementById("tenure").value),
-        MonthlyCharges: Number(document.getElementById("charges").value),
-        Contract: document.getElementById("contract").value,
-        InternetService: document.getElementById("internet").value
+        PhoneService: document.getElementById("PhoneService").value,
+        MultipleLines: document.getElementById("MultipleLines").value,
+        InternetService: document.getElementById("InternetService").value,
+        OnlineSecurity: document.getElementById("OnlineSecurity").value,
+        OnlineBackup: document.getElementById("OnlineBackup").value,
+        DeviceProtection: document.getElementById("DeviceProtection").value,
+        TechSupport: document.getElementById("TechSupport").value,
+        StreamingTV: document.getElementById("StreamingTV").value,
+        StreamingMovies: document.getElementById("StreamingMovies").value,
+        Contract: document.getElementById("Contract").value,
+        PaperlessBilling: document.getElementById("PaperlessBilling").value,
+        PaymentMethod: document.getElementById("PaymentMethod").value,
+        MonthlyCharges: Number(document.getElementById("MonthlyCharges").value),
+        TotalCharges: Number(document.getElementById("TotalCharges").value)
     };
 
     try {
@@ -276,11 +514,16 @@ form.addEventListener("submit", async (event) => {
             body: JSON.stringify(customer)
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error("Prediction request failed");
+            throw new Error(
+                data.detail
+                    ? JSON.stringify(data.detail)
+                    : "Prediction request failed"
+            );
         }
 
-        const data = await response.json();
         const percentage = data.churn_probability * 100;
 
         document.getElementById("probability").textContent =
@@ -297,11 +540,14 @@ form.addEventListener("submit", async (event) => {
                 ? "The model predicts this customer may churn."
                 : "The model predicts this customer is less likely to churn.";
 
+        document.getElementById("thresholdInfo").textContent =
+            "Decision threshold: " +
+            (data.threshold * 100).toFixed(0) + "%";
+
         result.style.display = "block";
 
     } catch (err) {
-        error.textContent =
-            "Unable to generate a prediction. Check that the API is running.";
+        error.textContent = "Unable to generate prediction: " + err.message;
         console.error(err);
     } finally {
         button.disabled = false;
@@ -309,5 +555,6 @@ form.addEventListener("submit", async (event) => {
     }
 });
 </script>
+
 </body>
 </html>
