@@ -1,262 +1,147 @@
-# Customer Churn Prediction System
+# Customer Churn Prediction
 
-An end-to-end machine learning application that predicts customer churn for a telecommunications company. The project combines a scikit-learn classification pipeline, model evaluation and explainability, a FastAPI REST API, an interactive web interface, automated tests, and Docker containerization.
+A machine learning project that predicts whether a telecommunications customer is likely to leave a service.
 
-The goal is to identify customers who are likely to leave a service and provide probability-based churn predictions that can support customer retention decisions.
+The project uses Python and Scikit-learn to train a Logistic Regression model. It also includes a FastAPI backend and a simple web interface where users can enter customer information and receive a churn prediction.
 
-## Features
+## Project Overview
 
-- End-to-end customer churn prediction pipeline.
-- Data preprocessing with scikit-learn pipelines and `ColumnTransformer`.
-- Comparison of Logistic Regression, Random Forest, and Gradient Boosting.
-- Evaluation using nested stratified cross-validation.
-- Comparison of two feature sets: four selected features and all 19 features.
-- Out-of-fold classification threshold optimization.
-- Final evaluation on a separate held-out test set.
-- Model explainability using SHAP.
+Customer churn occurs when a customer stops using a company's services.
+
+The goal of this project is to build a classification model that estimates the probability of customer churn based on customer information, subscribed services, contract details, and billing information.
+
+### Main Features
+
+- Customer churn prediction using Logistic Regression.
+- Data preprocessing with Scikit-learn.
+- Handling missing numerical and categorical values.
+- Numerical feature scaling and categorical encoding.
+- Model evaluation using standard classification metrics.
+- Saving and loading the trained model.
 - REST API built with FastAPI.
-- Input validation, including dependencies between subscribed services.
 - Interactive web interface.
-- Automated API tests with Pytest.
-- GitHub Actions continuous integration.
-- Docker-based application deployment with a container health check.
+- Input validation using Pydantic.
+- Automated API tests using Pytest.
+- GitHub Actions workflow.
 
-## Tech Stack
+## Technologies
 
 | Category | Technologies |
 |---|---|
-| Language | Python |
-| Machine Learning | scikit-learn |
-| Explainability | SHAP |
-| Data Processing | Pandas, NumPy |
-| Visualization | Matplotlib |
-| Model Serialization | Joblib |
+| Programming Language | Python |
+| Machine Learning | Scikit-learn |
+| Data Processing | Pandas |
+| Model Storage | Joblib |
 | Backend | FastAPI, Uvicorn |
-| Validation | Pydantic |
+| Input Validation | Pydantic |
 | Frontend | HTML, CSS, JavaScript |
 | Testing | Pytest, HTTPX |
-| CI/CD | GitHub Actions |
-| Containerization | Docker |
+| Version Control | Git, GitHub |
+| CI | GitHub Actions |
 
 ## Dataset
 
-The project uses the public [Telco Customer Churn dataset](https://www.kaggle.com/datasets/blastchar/telco-customer-churn).
+This project uses the [Telco Customer Churn dataset](https://www.kaggle.com/datasets/blastchar/telco-customer-churn).
 
-The dataset contains telecommunications customer information, including demographics, subscribed services, contract details, and billing information.
+The dataset contains 7,043 customer records and 21 columns.
 
-The target variable is `Churn`, indicating whether a customer left the company.
+It includes information such as:
 
-The model uses 19 input features and excludes the customer identifier and target column.
+- Customer demographics
+- Subscribed services
+- Contract type
+- Payment method
+- Monthly charges
+- Total charges
 
-## Machine Learning Approach
+The target column is `Churn`:
 
-### 1. Data preprocessing
+- `Yes` means the customer left the company.
+- `No` means the customer stayed.
 
-The preprocessing pipeline includes:
+The model uses 19 input features. The customer ID and target column are excluded from the input features.
 
-- Conversion of `TotalCharges` to numeric values.
-- Median imputation for missing numerical values.
-- Most-frequent imputation for missing categorical values.
-- Standardization of numerical features.
-- One-hot encoding of categorical features.
+Place the dataset at:
 
-Preprocessing is implemented using scikit-learn pipelines and a `ColumnTransformer`.
-
-All preprocessing transformations are fitted within the training folds, preventing information from validation or test partitions from leaking into preprocessing.
-
-### 2. Model comparison
-
-Three classification algorithms were evaluated:
-
-- Logistic Regression
-- Random Forest
-- Gradient Boosting
-
-Two feature configurations were compared:
-
-- **Original 4:** `tenure`, `MonthlyCharges`, `Contract`, and `InternetService`.
-- **All Features:** all 19 customer features.
-
-Model selection used nested stratified cross-validation:
-
-- Outer cross-validation: 5 folds.
-- Inner cross-validation: 4 folds.
-- The inner folds select a classification threshold using training-only out-of-fold predictions.
-- Each outer validation fold evaluates the model and its selected threshold on data not used for fitting or threshold selection.
-
-ROC-AUC and average precision evaluate ranking performance. Precision, recall, and F1 evaluate predictions using the threshold selected within each outer training fold.
-
-#### Nested cross-validation results
-
-| Model configuration | ROC-AUC | Average Precision | Precision | Recall | F1 |
-|---|---:|---:|---:|---:|---:|
-| Gradient Boosting — All Features | **0.8481** | **0.6616** | 0.5595 | 0.7264 | 0.6321 |
-| Logistic Regression — All Features | 0.8456 | 0.6583 | 0.5392 | **0.7639** | **0.6322** |
-| Gradient Boosting — Original 4 | 0.8396 | 0.6433 | 0.5264 | 0.7659 | 0.6240 |
-| Random Forest — All Features | 0.8363 | 0.6370 | 0.5460 | 0.7298 | 0.6247 |
-| Logistic Regression — Original 4 | 0.8334 | 0.6286 | 0.5302 | 0.7331 | 0.6154 |
-| Random Forest — Original 4 | 0.8132 | 0.6021 | 0.4895 | 0.7632 | 0.5964 |
-
-Gradient Boosting with all features achieved the highest ROC-AUC and average precision.
-
-Logistic Regression with all features achieved the highest F1-score, practically tied with Gradient Boosting, and the highest recall among the six configurations.
-
-Logistic Regression was selected as the final model because it provides competitive predictive performance, higher recall, lower computational cost, and a simpler, more interpretable model.
-
-The performance differences are small and should not be interpreted as proof that one algorithm is universally superior.
-
-The comparison results are generated by:
-
-```bash
-python experiment_models.py
+```text
+data/Telco-Customer-Churn.csv
 ```
 
-Outputs:
+## Machine Learning Workflow
 
-- `reports/model_comparison_nested_cv.csv`
-- `reports/model_comparison_nested_cv.png`
+The training process consists of the following steps:
 
-### 3. Decision threshold optimization
+1. Load the customer dataset.
+2. Convert `TotalCharges` into numerical values.
+3. Separate input features (`X`) from the target (`y`).
+4. Split the dataset into training and testing sets.
+5. Preprocess numerical and categorical features.
+6. Train a Logistic Regression classifier.
+7. Evaluate the model on the test set.
+8. Save the trained model and evaluation metrics.
 
-Instead of automatically using the default classification threshold of 0.50, the final training pipeline selects a threshold using out-of-fold prediction probabilities generated from the training partition.
+### Data Preprocessing
 
-The final threshold selection process uses:
+The project uses a Scikit-learn preprocessing pipeline.
 
-- `StratifiedKFold` with 5 folds.
-- `cross_val_predict` to generate out-of-fold probabilities.
-- Candidate thresholds from 0.10 to 0.80 in increments of 0.01.
-- F1-score as the threshold selection metric.
+**Numerical features:**
+- Missing values are replaced with the median.
+- Features are standardized using `StandardScaler`.
 
-The selected threshold for the final Logistic Regression model was **0.32**.
+**Categorical features:**
+- Missing values are replaced with the most frequent category.
+- Categories are converted into numerical features using `OneHotEncoder`.
 
-The threshold is selected using training data only. The held-out test partition is not used for threshold optimization.
+The preprocessing steps are combined using `ColumnTransformer` and `Pipeline`.
 
-The threshold and fitted model are saved together in:
+This ensures that preprocessing is fitted on the training data and applied consistently to the test data and future predictions.
 
-`models/churn_model.joblib`
+### Training and Testing
 
-The threshold represents a classification decision boundary, not a change to the underlying predicted probabilities.
+The dataset is divided into:
 
-Threshold selection based on the complete set of out-of-fold training predictions can still introduce some selection optimism. Final performance is therefore reported separately using the untouched held-out test partition.
+- 80% training data.
+- 20% testing data.
 
-### 4. Threshold trade-off analysis
+The split uses stratification to preserve the proportion of churn and non-churn customers.
 
-Run:
+A random state of `42` is used to make the split reproducible.
 
-```bash
-python threshold_analysis.py
-```
+### Classification Model
 
-This script compares precision, recall, specificity, F1, false positives, and false negatives across classification thresholds.
+The project uses Logistic Regression for binary classification.
 
-Outputs:
+The model estimates the probability that a customer will churn.
 
-- `reports/threshold_analysis.png`
-- `reports/threshold_analysis.csv`
+A classification threshold of `0.5` is used:
 
-The analysis helps illustrate the trade-off between identifying more potential churners and generating additional false-positive predictions.
+- Probability greater than or equal to 0.5: predict churn.
+- Probability below 0.5: predict no churn.
 
-## Final Model Evaluation
+## Model Performance
 
-The selected Logistic Regression model was evaluated on a stratified 20% held-out test partition containing 1,409 customers.
+The latest training run produced the following results on the held-out test set:
 
-The final test evaluation used the saved decision threshold of 0.32.
-
-### Final test metrics
-
-| Metric | Test result |
+| Metric | Result |
 |---|---:|
-| ROC-AUC | **0.8419** |
-| Average Precision | 0.6335 |
-| Accuracy | 75.80% |
-| Balanced Accuracy | 74.82% |
-| Precision | 53.23% |
-| Recall | 72.73% |
-| Specificity | 76.91% |
-| F1-score | 0.6147 |
-| Brier Score | 0.1381 |
-| Log Loss | 0.4205 |
-| Decision Threshold | **0.32** |
+| Accuracy | 80.55% |
+| Precision | 65.72% |
+| Recall | 55.88% |
+| F1-score | 60.40% |
+| ROC-AUC | 0.8419 |
 
 ### Confusion Matrix
 
-| | Predicted no churn | Predicted churn |
+| | Predicted No Churn | Predicted Churn |
 |---|---:|---:|
-| Actual no churn | 796 | 239 |
-| Actual churn | 102 | 272 |
+| Actual No Churn | 926 | 109 |
+| Actual Churn | 165 | 209 |
 
-The model correctly identified 272 of the 374 customers who churned in the test partition.
+The model correctly classified 926 customers who stayed and 209 customers who churned.
 
-The recall of 72.73% indicates that the model identified approximately 73% of actual churners.
+It also missed 165 actual churners. This indicates that improving churn detection, particularly recall, is an area for future work.
 
-The model also produced 239 false-positive predictions, illustrating the trade-off between detecting potential churn and unnecessary retention outreach.
-
-The evaluation script recreates the original stratified 80/20 split using `random_state=42` and loads the saved model and threshold.
-
-Run:
-
-```bash
-python evaluate_model.py
-```
-
-Outputs:
-
-- `reports/evaluation_metrics.json`
-- `reports/evaluation_dashboard.png`
-
-The dashboard includes ROC, precision-recall, confusion-matrix, and calibration plots.
-
-## Model Explainability with SHAP
-
-The project uses SHAP's `LinearExplainer` to interpret the fitted Logistic Regression classifier.
-
-The explainability process:
-
-- Uses a reproducible background sample of up to 200 training customers.
-- Explains up to 500 customers from the held-out test partition.
-- Applies the fitted preprocessing pipeline before SHAP analysis.
-- Calculates global feature importance and individual customer explanations.
-
-Run:
-
-```bash
-python explain_model.py
-```
-
-Generated outputs:
-
-- `reports/shap_summary.png`: global SHAP beeswarm plot.
-- `reports/shap_importance.png`: mean absolute SHAP feature importance.
-- `reports/shap_waterfall.png`: explanation of an individual customer.
-- `reports/shap_feature_importance.csv`: ranked feature importance values.
-
-### Most influential features
-
-The highest mean absolute SHAP values in the generated analysis were:
-
-| Feature | Mean absolute SHAP |
-|---|---:|
-| Tenure | 1.1192 |
-| Monthly Charges | 0.5188 |
-| Total Charges | 0.4444 |
-| Internet Service — Fiber optic | 0.3147 |
-| Internet Service — DSL | 0.2913 |
-
-Positive SHAP values move the classifier's raw score toward the churn class, while negative values move it away from churn.
-
-For this Logistic Regression model, SHAP values are expressed in log-odds space, not as percentage-point changes in churn probability.
-
-SHAP describes the model's learned associations and does not establish causal relationships.
-
-## Application Architecture
-
-The application consists of three main components:
-
-1. **Frontend:** An interactive web interface for entering customer information and displaying predictions.
-2. **FastAPI backend:** Validates customer input, processes prediction requests, and returns results.
-3. **Machine learning model:** A trained scikit-learn pipeline loaded from a Joblib artifact.
-
-The frontend sends customer information to the `/predict` endpoint. The API validates the input, obtains the churn probability, applies the saved classification threshold, and returns the prediction.
+These results describe the current model and are not a guarantee of performance on new customer data.
 
 ## Project Structure
 
@@ -266,26 +151,17 @@ customer-churn-ml/
 ├── app/
 │   └── main.py
 │
-├── frontend/
-│   └── index.html
-│
 ├── data/
 │   └── Telco-Customer-Churn.csv
+│
+├── frontend/
+│   └── index.html
 │
 ├── models/
 │   └── churn_model.joblib
 │
 ├── reports/
-│   ├── evaluation_metrics.json
-│   ├── evaluation_dashboard.png
-│   ├── final_test_metrics.json
-│   ├── final_threshold_analysis.csv
-│   ├── model_comparison_nested_cv.csv
-│   ├── model_comparison_nested_cv.png
-│   ├── shap_summary.png
-│   ├── shap_importance.png
-│   ├── shap_waterfall.png
-│   └── shap_feature_importance.csv
+│   └── final_test_metrics.json
 │
 ├── test/
 │   └── test_api.py
@@ -294,23 +170,13 @@ customer-churn-ml/
 │   └── workflows/
 │       └── tests.yml
 │
-├── analyze_features.py
-├── analyze_thresholds.py
-├── evaluate_model.py
-├── experiment_models.py
-├── explain_model.py
-├── inspect_data.py
-├── predict.py
-├── threshold_analysis.py
 ├── train.py
-│
-├── Dockerfile
-├── README.md
+├── predict.py
 ├── requirements.txt
-└── requirements-dev.txt
+├── requirements-dev.txt
+├── Dockerfile
+└── README.md
 ```
-
-Generated report files are created locally when the corresponding scripts are executed.
 
 ## Getting Started
 
@@ -353,182 +219,97 @@ source .venv/bin/activate
 python -m pip install -r requirements-dev.txt
 ```
 
-### 4. Run the application
+### 4. Train the model
 
-```bash
-uvicorn app.main:app --reload
-```
+Make sure the dataset is located at `data/Telco-Customer-Churn.csv`.
 
-Open:
-
-- Web application: http://127.0.0.1:8000
-- Interactive API documentation: http://127.0.0.1:8000/docs
-- Health endpoint: http://127.0.0.1:8000/health
-
-The trained model artifact is included in `models/`, so retraining is not required to run the application.
-
-### 5. Run automated tests
-
-```bash
-python -m pytest -v
-```
-
-The current test suite contains 9 API tests covering:
-
-- Home and health endpoints.
-- Successful predictions.
-- Response structure.
-- Numerical input validation.
-- Service-combination validation.
-
-The project also includes a GitHub Actions workflow for automated testing.
-
-### 6. Reproduce model experiments and training
-
-Compare the model configurations:
-
-```bash
-python experiment_models.py
-```
-
-Train the final Logistic Regression model, select its threshold, evaluate it, and save the model artifact:
+Run:
 
 ```bash
 python train.py
 ```
 
-The trained model and threshold are saved to:
+The script trains the Logistic Regression model and saves:
 
 ```text
 models/churn_model.joblib
+reports/final_test_metrics.json
 ```
 
-### 7. Run evaluation and explainability
+### 5. Make a prediction
 
-Evaluate the saved model:
+Run:
 
 ```bash
-python evaluate_model.py
+python predict.py
 ```
 
-Generate SHAP explanations:
+The script uses an example customer and displays:
+
+- Churn probability
+- Decision threshold
+- Churn prediction
+
+### 6. Run the web application
+
+Start the FastAPI server:
 
 ```bash
-python explain_model.py
+uvicorn app.main:app --reload
 ```
 
-## Docker
+Open the following addresses:
 
-The project includes a Dockerfile and a `.dockerignore` configuration.
+- Web application: http://127.0.0.1:8000
+- Interactive API documentation: http://127.0.0.1:8000/docs
+- Health endpoint: http://127.0.0.1:8000/health
 
-### Build the image
+The application loads the trained model from `models/churn_model.joblib`.
+
+You can enter customer information through the web interface and receive a prediction.
+
+### 7. Run automated tests
+
+Run:
 
 ```bash
-docker build -t customer-churn-api .
+python -m pytest -v
 ```
 
-### Run the container
+The test suite contains nine API tests covering:
 
-```bash
-docker run -d -p 8000:8000 --name customer-churn-container customer-churn-api
-```
+- Homepage and health endpoints.
+- Successful customer predictions.
+- Prediction response structure.
+- Invalid customer information.
+- Phone service validation.
+- Internet service validation.
 
-### Check container status
+GitHub Actions also runs model training and API tests automatically when changes are pushed or submitted through a pull request targeting `main`.
 
-```bash
-docker ps
-```
+## API
 
-The Docker image includes a health check that periodically calls the application's `/health` endpoint.
+The application provides three endpoints:
 
-Open http://localhost:8000 to access the application.
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/` | Serves the web interface |
+| GET | `/health` | Checks API health |
+| POST | `/predict` | Predicts customer churn |
 
-### Stop the container
-
-```bash
-docker rm -f customer-churn-container
-```
-
-## API Usage
-
-### Endpoint
-
-`POST /predict`
-
-The endpoint accepts 19 customer attributes.
-
-Example request:
-
-```bash
-curl -X POST http://127.0.0.1:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "gender": "Female",
-    "SeniorCitizen": 0,
-    "Partner": "Yes",
-    "Dependents": "No",
-    "tenure": 12,
-    "PhoneService": "Yes",
-    "MultipleLines": "No",
-    "InternetService": "Fiber optic",
-    "OnlineSecurity": "No",
-    "OnlineBackup": "Yes",
-    "DeviceProtection": "No",
-    "TechSupport": "No",
-    "StreamingTV": "Yes",
-    "StreamingMovies": "No",
-    "Contract": "Month-to-month",
-    "PaperlessBilling": "Yes",
-    "PaymentMethod": "Electronic check",
-    "MonthlyCharges": 75.0,
-    "TotalCharges": 900.0
-  }'
-```
-
-Example response (illustrative values):
-
-```json
-{
-  "churn_probability": 0.775,
-  "threshold": 0.32,
-  "prediction": 1,
-  "risk_level": "High"
-}
-```
-
-### Response fields
-
-| Field | Description |
-|---|---|
-| `churn_probability` | Estimated probability of customer churn |
-| `threshold` | Classification threshold used by the model |
-| `prediction` | `1` indicates likely churn; `0` indicates unlikely churn |
-| `risk_level` | Risk category based on the classification result |
-
-Invalid input returns HTTP 422 with validation details.
-
-## Limitations
-
-- The model uses a public historical dataset, which may not represent current customer behavior.
-- Classification performance depends on the quality and representativeness of the dataset.
-- The selected threshold prioritizes F1 and still produces false-positive predictions.
-- SHAP explanations describe model associations, not causal effects.
-- The application is an educational portfolio project, not a production-ready customer retention system.
-- Model performance should be monitored and periodically reevaluated before real-world deployment.
-- The nested cross-validation results and final held-out test results are estimates based on this dataset and split, not guarantees of future performance.
+The prediction endpoint accepts customer information, validates the input, and returns the predicted churn probability and classification.
 
 ## Future Improvements
 
-- Evaluate business costs associated with false positives and false negatives.
-- Investigate calibration methods and probability reliability.
-- Add model monitoring and data drift detection.
-- Deploy the application to a cloud platform.
-- Add experiment tracking and model versioning.
-- Explore more advanced models and additional datasets.
-- Improve automated integration and deployment workflows.
+Some possible improvements include:
 
----
+- Experimenting with additional classification algorithms.
+- Improving recall while maintaining reasonable precision.
+- Comparing different classification thresholds.
+- Adding model explainability.
+- Improving the frontend.
+- Adding more prediction and integration tests.
 
-**Author:** [Aliheydar Gachabayov](https://www.linkedin.com/in/aliheydar-gachabayov)
+## Disclaimer
 
-**GitHub:** [aliheydar-gachabayov](https://github.com/aliheydar-gachabayov)
+This project is an educational machine learning application. Its predictions should not be treated as validated business decisions or as a substitute for a properly evaluated customer retention system.

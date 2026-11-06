@@ -1,8 +1,5 @@
+
 -r requirements.txt
 
 pytest==9.1.1
 httpx==0.28.1
-
-# Model evaluation and explainability (development tools)
-matplotlib>=3.9,<4
-shap>=0.48,<1
