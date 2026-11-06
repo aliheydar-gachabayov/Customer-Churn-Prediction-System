@@ -118,16 +118,19 @@ metrics = {
     "recall": float(recall_score(y_test, predictions)),
     "f1": float(f1_score(y_test, predictions)),
     "roc_auc": float(roc_auc_score(y_test, probabilities)),
+    "confusion_matrix": confusion_matrix(y_test, predictions).tolist(),
 }
 
 print("\nMODEL EVALUATION")
 print("=" * 35)
 
 for name, value in metrics.items():
+    if name == "confusion_matrix":
+        continue
     print(f"{name}: {value:.4f}")
 
 print("\nConfusion Matrix:")
-print(confusion_matrix(y_test, predictions))
+print(metrics["confusion_matrix"])
 
 
 # 7. Save the model
