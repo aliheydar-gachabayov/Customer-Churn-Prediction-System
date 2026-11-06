@@ -6,6 +6,7 @@ import joblib
 import pandas as pd
 
 from sklearn.compose import ColumnTransformer
+from sklearn.dummy import DummyClassifier
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
@@ -95,6 +96,16 @@ preprocessor = ColumnTransformer([
 
 # 5. Build and train the model
 
+# Train a simple baseline model for comparison
+
+baseline_model = DummyClassifier(strategy="most_frequent")
+
+print("\nTraining baseline model...")
+
+baseline_model.fit(X_train, y_train)
+
+baseline_predictions = baseline_model.predict(X_test)
+
 model = Pipeline([
     ("preprocessor", preprocessor),
     ("classifier", LogisticRegression(max_iter=2000)),
@@ -106,6 +117,13 @@ model.fit(X_train, y_train)
 
 
 # 6. Evaluate the model
+
+baseline_metrics = {
+    "accuracy": float(accuracy_score(y_test, baseline_predictions)),
+    "precision": float(precision_score(y_test, baseline_predictions, zero_division=0)),
+    "recall": float(recall_score(y_test, baseline_predictions, zero_division=0)),
+    "f1": float(f1_score(y_test, baseline_predictions, zero_division=0)),
+}
 
 threshold = 0.5
 
@@ -120,6 +138,12 @@ metrics = {
     "roc_auc": float(roc_auc_score(y_test, probabilities)),
     "confusion_matrix": confusion_matrix(y_test, predictions).tolist(),
 }
+
+print("\nBASELINE MODEL EVALUATION")
+print("=" * 35)
+
+for name, value in baseline_metrics.items():
+    print(f"{name}: {value:.4f}")
 
 print("\nMODEL EVALUATION")
 print("=" * 35)
@@ -152,8 +176,13 @@ print(f"\nModel saved to: {model_path}")
 
 metrics_path = REPORTS_DIR / "final_test_metrics.json"
 
+evaluation_report = {
+    "baseline": baseline_metrics,
+    "logistic_regression": metrics,
+}
+
 with open(metrics_path, "w") as file:
-    json.dump(metrics, file, indent=4)
+    json.dump(evaluation_report, file, indent=4)
 
 print(f"Metrics saved to: {metrics_path}")
 
