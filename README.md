@@ -13,6 +13,7 @@ The goal of this project is to build a classification model that estimates the p
 ### Main Features
 
 - Customer churn prediction using Logistic Regression.
+- Baseline model comparison using DummyClassifier.
 - Data preprocessing with Scikit-learn.
 - Handling missing numerical and categorical values.
 - Numerical feature scaling and categorical encoding.
@@ -75,10 +76,11 @@ The training process consists of the following steps:
 2. Convert `TotalCharges` into numerical values.
 3. Separate input features (`X`) from the target (`y`).
 4. Split the dataset into training and testing sets.
-5. Preprocess numerical and categorical features.
-6. Train a Logistic Regression classifier.
-7. Evaluate the model on the test set.
-8. Save the trained model and evaluation metrics.
+5. Train a DummyClassifier baseline model.
+6. Preprocess numerical and categorical features.
+7. Train a Logistic Regression classifier.
+8. Compare both models using classification metrics.
+9. Save the trained Logistic Regression model and evaluation metrics.
 
 ### Data Preprocessing
 
@@ -129,6 +131,21 @@ The latest training run produced the following results on the held-out test set:
 | Recall | 55.88% |
 | F1-score | 60.40% |
 | ROC-AUC | 0.8419 |
+
+### Baseline Comparison
+
+A DummyClassifier using the `most_frequent` strategy is used as a baseline.
+
+It always predicts the most common class in the training data. This provides a simple reference point to evaluate whether Logistic Regression learns useful patterns.
+
+| Metric | Baseline | Logistic Regression |
+|---|---:|---:|
+| Accuracy | 73.46% | 80.55% |
+| Precision | 0.00% | 65.72% |
+| Recall | 0.00% | 55.88% |
+| F1-score | 0.00% | 60.40% |
+
+Logistic Regression performs better than the baseline, particularly in identifying customers who churn.
 
 ### Confusion Matrix
 
@@ -276,14 +293,16 @@ Run:
 python -m pytest -v
 ```
 
-The test suite contains nine API tests covering:
+The test suite contains 12 API tests covering:
 
-- Homepage and health endpoints.
+- Home and health endpoints.
 - Successful customer predictions.
 - Prediction response structure.
 - Invalid customer information.
-- Phone service validation.
-- Internet service validation.
+- Missing required fields.
+- Invalid customer categories.
+- Phone and internet service validation.
+- Negative numerical values.
 
 GitHub Actions also runs model training and API tests automatically when changes are pushed or submitted through a pull request targeting `main`.
 
