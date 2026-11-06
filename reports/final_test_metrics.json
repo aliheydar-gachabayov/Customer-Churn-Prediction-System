@@ -1,20 +1,25 @@
 {
-    "model": "Logistic Regression",
-    "feature_set": "All Features",
-    "threshold": 0.32,
-    "roc_auc": 0.8418610659019866,
-    "average_precision": 0.6334285921532531,
-    "accuracy": 0.7579843860894251,
-    "balanced_accuracy": 0.748177426438296,
-    "precision": 0.5322896281800391,
-    "recall": 0.7272727272727273,
-    "specificity": 0.7690821256038647,
-    "f1": 0.6146892655367232,
-    "brier_score": 0.1380862863375857,
-    "log_loss": 0.42052156774837707,
-    "true_negatives": 796,
-    "false_positives": 239,
-    "false_negatives": 102,
-    "true_positives": 272,
-    "test_samples": 1409
+    "baseline": {
+        "accuracy": 0.7345635202271115,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0
+    },
+    "logistic_regression": {
+        "accuracy": 0.8055358410220014,
+        "precision": 0.6572327044025157,
+        "recall": 0.5588235294117647,
+        "f1": 0.6040462427745664,
+        "roc_auc": 0.8418610659019866,
+        "confusion_matrix": [
+            [
+                926,
+                109
+            ],
+            [
+                165,
+                209
+            ]
+        ]
+    }
 }
