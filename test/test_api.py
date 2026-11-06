@@ -168,3 +168,38 @@ def test_valid_no_phone_service_combination():
     )
 
     assert response.status_code == 200
+
+def test_missing_customer_field():
+    customer = valid_customer()
+    del customer["gender"]
+
+    response = client.post(
+        "/predict",
+        json=customer
+    )
+
+    assert response.status_code == 422
+
+
+def test_invalid_gender():
+    customer = valid_customer()
+    customer["gender"] = "Unknown"
+
+    response = client.post(
+        "/predict",
+        json=customer
+    )
+
+    assert response.status_code == 422
+
+
+def test_negative_monthly_charges():
+    customer = valid_customer()
+    customer["MonthlyCharges"] = -50.0
+
+    response = client.post(
+        "/predict",
+        json=customer
+    )
+
+    assert response.status_code == 422
