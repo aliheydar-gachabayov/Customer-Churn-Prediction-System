@@ -36,7 +36,24 @@ REPORTS_DIR.mkdir(exist_ok=True)
 
 # 2. Load the dataset
 
+if not DATA_PATH.is_file():
+    raise FileNotFoundError(
+        f"Dataset not found: {DATA_PATH}\n"
+        "Download the Telco Customer Churn dataset and place it at "
+        "'data/Telco-Customer-Churn.csv'. "
+        "See the Dataset section in README.md for details."
+    )
+
 df = pd.read_csv(DATA_PATH)
+
+required_columns = {"customerID", "Churn"}
+missing_columns = required_columns.difference(df.columns)
+
+if missing_columns:
+    raise ValueError(
+        "Dataset is missing required columns: "
+        + ", ".join(sorted(missing_columns))
+    )
 
 df["TotalCharges"] = pd.to_numeric(
     df["TotalCharges"].astype(str).str.strip(),
